@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "node scripts/seed.mjs"
+    "seed": "node scripts/seed-demo-data.mjs",
+    "export:seed": "node scripts/export-supabase-seed.mjs"
   },
   "dependencies": {
     "next": "14.2.15",

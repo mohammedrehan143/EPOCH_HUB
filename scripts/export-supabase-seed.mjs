@@ -41,6 +41,16 @@ for (const table of tables) {
 
   for (const row of rows) {
     const valList = cols.map(c => {
+      // In domains, set head_id to NULL initially to avoid circular foreign key with users
+      if (table === 'domains' && c === 'head_id') {
+        return 'NULL';
+      }
+
+      // Convert SQLite integer booleans (1/0) to PostgreSQL booleans (TRUE/FALSE)
+      if ((table === 'users' && c === 'is_active') || (table === 'notifications' && c === 'read')) {
+        return row[c] === 1 || row[c] === true ? 'TRUE' : 'FALSE';
+      }
+
       const v = row[c];
       if (v === null || v === undefined) return 'NULL';
       if (typeof v === 'number') return v;
@@ -54,10 +64,12 @@ for (const table of tables) {
   sql += '\n';
 }
 
-// Also update domain head_ids if any
+// Update domain head_ids after users have been inserted
 const domainHeads = db.prepare(`SELECT id, head_id FROM domains WHERE head_id IS NOT NULL`).all();
 if (domainHeads && domainHeads.length > 0) {
-  sql += `-- Update Domain Heads\n`;
+  sql += `-- ---------------------------------------------------------\n`;
+  sql += `-- Table: domains (Link domain heads after users table is populated)\n`;
+  sql += `-- ---------------------------------------------------------\n`;
   for (const dh of domainHeads) {
     sql += `UPDATE public.domains SET head_id = '${dh.head_id}' WHERE id = '${dh.id}';\n`;
   }
