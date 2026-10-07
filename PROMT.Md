@@ -1745,3 +1745,6 @@ Finally provide a concise implementation summary containing:
 * Any known limitations.
 
 Do not claim a feature is complete unless it is actually functional.
+
+*use supabase for the database
+
