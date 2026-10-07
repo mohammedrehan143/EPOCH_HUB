@@ -46,9 +46,34 @@ async function test() {
     throw new Error(`Failed member login: ${JSON.stringify(alexData)}`);
   }
 
-  // 4. Test Task Claiming by Alex (tsk-001)
-  console.log('\n[4] Testing atomic task claim (tsk-001)...');
-  const claimRes = await fetch(`${BASE}/api/tasks/tsk-001/claim`, {
+  // 4. Create a fresh test task dynamically as Admin
+  console.log('\n[4] Creating a fresh test task as Admin...');
+  const createTaskRes = await fetch(`${BASE}/api/tasks`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Cookie': adminCookie
+    },
+    body: JSON.stringify({
+      event_id: 'evt-techfest-2026',
+      domain_id: 'dom-tech',
+      title: `E2E Automated Test Task ${Date.now()}`,
+      description: 'Dynamic task for end-to-end claim, deliverable upload, and review verification.',
+      points: 15,
+      priority: 'HIGH',
+      deadline: new Date(Date.now() + 86400000 * 3).toISOString()
+    })
+  });
+  const createTaskData = await createTaskRes.json();
+  if (!createTaskRes.ok || !createTaskData.success) {
+    throw new Error(`Failed to create test task: ${JSON.stringify(createTaskData)}`);
+  }
+  const testTaskId = createTaskData.taskId;
+  console.log(`✓ PASS: Created test task ${testTaskId}`);
+
+  // 4b. Test Task Claiming by Alex
+  console.log(`\n[4b] Testing atomic task claim (${testTaskId})...`);
+  const claimRes = await fetch(`${BASE}/api/tasks/${testTaskId}/claim`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -57,14 +82,14 @@ async function test() {
   });
   const claimData = await claimRes.json();
   if (claimRes.ok && claimData.success) {
-    console.log('✓ PASS: Task tsk-001 claimed successfully by Alex!');
+    console.log(`✓ PASS: Task ${testTaskId} claimed successfully by Alex!`);
   } else {
-    console.log('Note on claim:', claimData);
+    throw new Error(`Failed to claim task: ${JSON.stringify(claimData)}`);
   }
 
   // 5. Test Double-Claim Safeguard (Race condition check)
   console.log('\n[5] Testing race-condition / double-claim prevention...');
-  const doubleClaimRes = await fetch(`${BASE}/api/tasks/tsk-001/claim`, {
+  const doubleClaimRes = await fetch(`${BASE}/api/tasks/${testTaskId}/claim`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -79,14 +104,14 @@ async function test() {
   }
 
   // 6. Test Deliverable Submission by Alex
-  console.log('\n[6] Testing multipart deliverable upload for tsk-001...');
+  console.log(`\n[6] Testing multipart deliverable upload for ${testTaskId}...`);
   const formData = new FormData();
   const fileContent = Buffer.from('console.log("Epoch live countdown module built!");');
   const blob = new Blob([fileContent], { type: 'text/plain' });
   formData.append('file', blob, 'countdown-microsite.zip');
   formData.append('comment', 'Responsive countdown widget ready for staging deployment.');
 
-  const submitRes = await fetch(`${BASE}/api/tasks/tsk-001/submit`, {
+  const submitRes = await fetch(`${BASE}/api/tasks/${testTaskId}/submit`, {
     method: 'POST',
     headers: { 'Cookie': alexCookie },
     body: formData
