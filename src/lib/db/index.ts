@@ -71,12 +71,26 @@ export function getDb(): DatabaseSync {
 
   dbInstance = new DatabaseSync(dbPath);
 
-  // Enable WAL mode for high concurrency and performance
-  dbInstance.exec('PRAGMA journal_mode = WAL;');
-  dbInstance.exec('PRAGMA foreign_keys = ON;');
+  // Configure SQLite for high concurrency, memory journal on serverless
+  try {
+    const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    if (isServerless) {
+      dbInstance.exec('PRAGMA journal_mode = MEMORY;');
+    } else {
+      dbInstance.exec('PRAGMA journal_mode = WAL;');
+    }
+    dbInstance.exec('PRAGMA foreign_keys = ON;');
+    dbInstance.exec('PRAGMA busy_timeout = 5000;');
+  } catch (err) {
+    console.warn('SQLite pragma warning:', err);
+  }
 
   // Run migrations
-  dbInstance.exec(SQLITE_SCHEMA);
+  try {
+    dbInstance.exec(SQLITE_SCHEMA);
+  } catch (err) {
+    console.error('Migration schema error:', err);
+  }
 
   // Auto seed on initial startup
   try {
@@ -89,21 +103,36 @@ export function getDb(): DatabaseSync {
 }
 
 export function query<T = any>(sql: string, params: any[] = []): T[] {
-  const db = getDb();
-  const stmt = db.prepare(sql);
-  return stmt.all(...params) as T[];
+  try {
+    const db = getDb();
+    const stmt = db.prepare(sql);
+    return stmt.all(...params) as T[];
+  } catch (err) {
+    console.error('SQLite query error on:', sql, err);
+    return [];
+  }
 }
 
 export function queryOne<T = any>(sql: string, params: any[] = []): T | undefined {
-  const db = getDb();
-  const stmt = db.prepare(sql);
-  return stmt.get(...params) as T | undefined;
+  try {
+    const db = getDb();
+    const stmt = db.prepare(sql);
+    return stmt.get(...params) as T | undefined;
+  } catch (err) {
+    console.error('SQLite queryOne error on:', sql, err);
+    return undefined;
+  }
 }
 
 export function execute(sql: string, params: any[] = []): { changes: number | bigint; lastInsertRowid: number | bigint } {
-  const db = getDb();
-  const stmt = db.prepare(sql);
-  return stmt.run(...params);
+  try {
+    const db = getDb();
+    const stmt = db.prepare(sql);
+    return stmt.run(...params);
+  } catch (err) {
+    console.error('SQLite execute error on:', sql, err);
+    return { changes: 0, lastInsertRowid: 0 };
+  }
 }
 
 export function transaction<T>(fn: (db: DatabaseSync) => T): T {

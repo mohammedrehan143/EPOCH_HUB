@@ -98,8 +98,10 @@ export default async function DashboardPage() {
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
+    const sanitizedUser = user ? JSON.parse(JSON.stringify(user)) : null;
+
     return (
-      <AppShell initialUser={user}>
+      <AppShell initialUser={sanitizedUser}>
         <div className="space-y-8">
           {/* Top Hero Banner */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-indigo-950/70 via-slate-900 to-slate-900 border border-indigo-500/20 shadow-2xl relative overflow-hidden">
