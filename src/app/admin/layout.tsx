@@ -13,8 +13,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/dashboard');
   }
 
+  const sanitizedUser = user ? JSON.parse(JSON.stringify(user)) : null;
+
   return (
-    <AppShell initialUser={user}>
+    <AppShell initialUser={sanitizedUser}>
       <div className="space-y-6">
         <div className="border-b border-slate-800 pb-4">
           <div className="flex items-center gap-2 mb-1">

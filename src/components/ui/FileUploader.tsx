@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useRef, useState } from 'react';
 import { UploadCloud, File as FileIcon, X, CheckCircle2 } from 'lucide-react';
 import { cn, formatFileSize } from '@/lib/utils';
