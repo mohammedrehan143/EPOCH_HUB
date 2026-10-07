@@ -1,26 +1,72 @@
 import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { SQLITE_SCHEMA } from './schema';
 import { runSeed } from './seed';
 
 let dbInstance: DatabaseSync | null = null;
+
+export function getStoragePaths() {
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+  if (isServerless) {
+    const tmpDir = os.tmpdir();
+    return {
+      dbPath: path.join(tmpDir, 'epoch_hub.db'),
+      uploadsDir: path.join(tmpDir, 'uploads')
+    };
+  }
+
+  let dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'epoch_hub.db');
+  let uploadsDir = process.env.STORAGE_DIR || path.join(process.cwd(), 'data', 'uploads');
+
+  if (!path.isAbsolute(dbPath)) {
+    dbPath = path.resolve(process.cwd(), dbPath);
+  }
+  if (!path.isAbsolute(uploadsDir)) {
+    uploadsDir = path.resolve(process.cwd(), uploadsDir);
+  }
+
+  return { dbPath, uploadsDir };
+}
 
 export function getDb(): DatabaseSync {
   if (dbInstance) {
     return dbInstance;
   }
 
-  const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'epoch_hub.db');
-  const uploadsDir = process.env.STORAGE_DIR || path.join(process.cwd(), 'data', 'uploads');
+  let { dbPath, uploadsDir } = getStoragePaths();
 
-  // Ensure directories exist
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  // Ensure directories exist with fallback for read-only environments (Vercel serverless)
+  try {
+    const dir = path.dirname(dbPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+  } catch (err) {
+    // If working directory is read-only, fallback to os.tmpdir()
+    const tmpDir = os.tmpdir();
+    dbPath = path.join(tmpDir, 'epoch_hub.db');
+    uploadsDir = path.join(tmpDir, 'uploads');
+    try {
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+    } catch {}
   }
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+
+  // If running in temporary dir and bundled database exists, copy it over
+  if (dbPath.startsWith(os.tmpdir()) && !fs.existsSync(dbPath)) {
+    const bundledDb = path.join(process.cwd(), 'data', 'epoch_hub.db');
+    if (fs.existsSync(bundledDb)) {
+      try {
+        fs.copyFileSync(bundledDb, dbPath);
+      } catch {}
+    }
   }
 
   dbInstance = new DatabaseSync(dbPath);

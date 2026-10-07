@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 import { getCurrentUser } from '@/lib/auth/session';
+import { getStoragePaths } from '@/lib/db';
 
 export async function GET(
   req: Request,
@@ -14,15 +15,17 @@ export async function GET(
     }
 
     const filename = params.fileId;
-    const storageDir = process.env.STORAGE_DIR || path.join(process.cwd(), 'data', 'uploads');
-    const filePath = path.join(storageDir, filename);
+    const { uploadsDir } = getStoragePaths();
+    const filePath = path.join(uploadsDir, filename);
 
     // If file doesn't exist on disk, create a sample placeholder file if it matches seed files
     if (!fs.existsSync(filePath)) {
-      if (!fs.existsSync(storageDir)) {
-        fs.mkdirSync(storageDir, { recursive: true });
+      if (!fs.existsSync(uploadsDir)) {
+        try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch {}
       }
-      fs.writeFileSync(filePath, `Epoch Hub Sample Output File for: ${filename}\nGenerated for internal club verification.\nTimestamp: ${new Date().toISOString()}`);
+      try {
+        fs.writeFileSync(filePath, `Epoch Hub Sample Output File for: ${filename}\nGenerated for internal club verification.\nTimestamp: ${new Date().toISOString()}`);
+      } catch {}
     }
 
     const fileBuffer = fs.readFileSync(filePath);
