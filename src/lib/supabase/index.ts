@@ -2,14 +2,17 @@ export { supabase, getSupabaseBrowserClient } from './client';
 export { getSupabaseServerClient } from './server';
 
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !url.startsWith('http') || url.includes('your-project') || url.includes('demo-project')) {
     return false;
   }
-  if (!anonKey || anonKey.includes('your-anon-key') || anonKey.includes('dummy')) {
+  if (!anonKey && !serviceKey) {
+    return false;
+  }
+  if (anonKey && (anonKey.includes('your-anon-key') || anonKey.includes('dummy'))) {
     return false;
   }
   return true;
@@ -24,7 +27,7 @@ export async function testSupabaseConnection(): Promise<{
   if (!isSupabaseConfigured()) {
     return {
       connected: false,
-      message: 'Supabase credentials not fully configured in .env. Please provide NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.',
+      message: 'Supabase credentials not configured in .env. Please provide SUPABASE_URL and SUPABASE_ANON_KEY.',
     };
   }
 

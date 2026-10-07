@@ -17,11 +17,12 @@ export async function GET() {
       pointTransactions: queryOne<{ c: number }>('SELECT count(*) as c FROM point_transactions')?.c || 0,
     };
 
+    const supaUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
     return NextResponse.json({
       supabase: {
         configured,
-        url: process.env.NEXT_PUBLIC_SUPABASE_URL ? `${process.env.NEXT_PUBLIC_SUPABASE_URL.slice(0, 15)}...` : null,
-        hasAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+        url: supaUrl ? `${supaUrl.slice(0, 15)}...` : null,
+        hasAnonKey: Boolean(process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
         hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
         status: conn,
       },
@@ -30,7 +31,7 @@ export async function GET() {
         stats: localStats,
       },
       instructions: {
-        step1: 'Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env file',
+        step1: 'Set SUPABASE_URL and SUPABASE_ANON_KEY in your .env file',
         step2: 'Execute supabase/migrations/20261007_init.sql in your Supabase SQL Editor',
         step3: 'Execute supabase/seed.sql or run "npm run supabase:sync" to push all rich demo data',
       }
